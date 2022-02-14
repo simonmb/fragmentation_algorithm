@@ -1,5 +1,5 @@
 # fragmentation_algorithm (new version)
-![Algorithm for automatically fragmenting molecules into predefined groups](graphical abstract2_white_bg.png)
+![Algorithm for automatically fragmenting molecules into predefined groups](graphical%20abstract2_white_bg.png)
 - This algorithm allows fragmenting molecules in an automatic manner based on groups defined as SMARTS.
 - You can execute fragmenter.py and this will show a small example of what the algorithm can do.
 - Why is there a newer version?
