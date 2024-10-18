@@ -1,34 +1,9 @@
-# -*- coding: utf-8 -*-
-''' Class for fragmenting molecules into molecular subgroups
-
-MIT License
-
-Copyright (C) 2019, Simon Mueller <simon.mueller@tuhh.de>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.'''
-    
 class fragmenter:
-    # tested with Python 3.8.8 and RDKit version 2021.09.4
     
     from rdkit import Chem
     import marshal as marshal
     from rdkit.Chem import rdmolops
+    import warnings
 
     # does a substructure match and then checks whether the match 
     # is adjacent to previous matches
@@ -94,20 +69,17 @@ class fragmenter:
             if not callable(function_to_choose_fragmentation):
                 raise TypeError('function_to_choose_fragmentation needs to be a function.')
             else:
-                if type(function_to_choose_fragmentation([{}, {}])) != dict:
-                    raise TypeError('function_to_choose_fragmentation needs to take a list of fragmentations and choose one of it')
+                if type(function_to_choose_fragmentation([{}, {}])) not in [dict, list]:
+                    raise TypeError('function_to_choose_fragmentation needs to take a list of fragmentations and return one fragmentation or a list of fragmentations.')
                 
             if n_max_fragmentations_to_find != -1:
                 if n_max_fragmentations_to_find < 1:
                     raise ValueError('n_max_fragmentations_to_find has to be 1 or higher.')
 
         if fragmentation_scheme_order is None:
-            fragmentation_scheme_order = []
-
-        if algorithm in ['simple', 'combined']:
-            assert len(fragmentation_scheme) == len(fragmentation_scheme_order)
-        else:
-            fragmentation_scheme_order = [key for key in fragmentation_scheme.keys()]
+            fragmentation_scheme_order = list(fragmentation_scheme) # sort to get reproducible results
+            if algorithm in ['simple', 'combined']:
+                self.warnings.warn('No especific fragmentation_scheme_order was given, you might get better results if you specify the order in which the groups are searched for.')
             
         self.n_max_fragmentations_to_find = n_max_fragmentations_to_find
         
@@ -508,42 +480,4 @@ class fragmenter:
         return match_set in found_matches_set
 
 if __name__ == '__main__':
-
-    smiles = ['CCCCO', 'CCCO', 'CCO', 'CO']
-    fragmentation_scheme = {
-        'CH2' : '[CH2]',
-        'OH' : '[OH]',
-        'CH3' : '[CH3]',
-        'CH2-CH2' : '[CH2][CH2]'
-    }
-    fragmentation_scheme_order1 = ['CH2-CH2', 'CH3', 'CH2', 'OH']
-
-    print('simple algorithm 1')
-    frg = fragmenter(fragmentation_scheme, fragmentation_scheme_order=fragmentation_scheme_order1, algorithm='simple')
-    for smi in smiles:
-        fragmentation, success, fragmentation_matches = frg.fragment(smi)
-        print(smi, fragmentation)
-
-
-    print()
-    print('simple algorithm 2')
-    fragmentation_scheme_order2 = ['CH3', 'CH2', 'CH2-CH2', 'OH']
-    frg = fragmenter(fragmentation_scheme, fragmentation_scheme_order=fragmentation_scheme_order2, algorithm='simple')
-    for smi in smiles:
-        fragmentation, success, fragmentation_matches = frg.fragment(smi)
-        print(smi, fragmentation)
-
-    print()
-    print('complete algorithm 1')
-    frg = fragmenter(fragmentation_scheme, algorithm='complete', n_atoms_cuttoff=30, function_to_choose_fragmentation=lambda x: x[0])
-    for smi in smiles:
-        fragmentation, success, fragmentation_matches = frg.fragment(smi)
-        print(smi, fragmentation)
-
-    print()
-    print('complete algorithm 2')
-    frg = fragmenter(fragmentation_scheme, algorithm='complete', n_atoms_cuttoff=30, function_to_choose_fragmentation=lambda x: x[0])
-    for smi in smiles:
-        fragmentations, success, fragmentations_matches = frg.fragment_complete(smi)
-        print(smi, fragmentations)
-        print(fragmentations_matches) # some of the fragmentations are the same, but the found fragmentation_matches are different.
+    main()
