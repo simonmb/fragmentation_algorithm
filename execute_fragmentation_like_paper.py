@@ -140,7 +140,7 @@ complete_fragmenter_fragmented_and_equal_to_reference_DB = []
 right_size_for_complete_fragmenter = []
 
 simple_fragmenter = fragmenter(fragmentation_scheme, algorithm='simple')
-complete_fragmenter = fragmenter(fragmentation_scheme, algorithm='complete', n_atoms_cuttoff=20, function_to_choose_fragmentation=function_to_choose_fragmentation)
+complete_fragmenter = fragmenter(fragmentation_scheme, algorithm='complete', n_heavy_atoms_cuttoff=20, function_to_choose_fragmentation=function_to_choose_fragmentation)
 
 # without sorting the patterns
 print('####################################################################')
@@ -260,7 +260,7 @@ with open('structures_DB.csv') as f:
     for line in f.readlines():
         structures_DB.append(CSV_to_info(line))
         
-combined_fragmenter = fragmenter(fragmentation_scheme, algorithm='combined', n_atoms_cuttoff=20, function_to_choose_fragmentation=function_to_choose_fragmentation, n_max_fragmentations_to_find=1)
+combined_fragmenter = fragmenter(fragmentation_scheme, algorithm='combined', n_heavy_atoms_cuttoff=20, function_to_choose_fragmentation=function_to_choose_fragmentation, n_max_fragmentations_to_find=1)
 
 combined_fragmenter.fragmentation_scheme_order = sorted_group_numbers_as_in_paper 
 combined_fragmenter.n_max_fragmentations_to_find = 1    
