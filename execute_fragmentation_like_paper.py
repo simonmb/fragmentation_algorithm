@@ -1,5 +1,6 @@
 import operator
 from fragmenter import fragmenter
+from fragmenter_utils import draw_mol_with_highlights_and_legend
 from rdkit import Chem
 from tqdm import tqdm
 import SMARTS
@@ -141,6 +142,14 @@ right_size_for_complete_fragmenter = []
 
 simple_fragmenter = fragmenter(fragmentation_scheme, algorithm='simple')
 complete_fragmenter = fragmenter(fragmentation_scheme, algorithm='complete', n_heavy_atoms_cuttoff=20, function_to_choose_fragmentation=function_to_choose_fragmentation)
+
+# examples of fragmentation drawing
+group_names = {k+1:v[0] for k,v  in enumerate(UNIFAC_SMARTS)}
+for i, SMILES in enumerate(['CC1=C(C(=CC(=C1Cl)Cl)Cl)Cl', 'CCC=CCC1=C(CCC1=O)C', 'CCC1=CC(=C(C=C1)CC)CC']):
+        mol = Chem.MolFromSmiles(SMILES)
+        fragmentation, success, fragmentation_matches = simple_fragmenter.fragment(mol)
+        img = draw_mol_with_highlights_and_legend(mol, fragmentation_matches, group_names)
+        img.save(f'example{i+1}.png')
 
 # without sorting the patterns
 print('####################################################################')

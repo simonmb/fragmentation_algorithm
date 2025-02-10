@@ -1,5 +1,7 @@
 import operator
+from rdkit import Chem
 from fragmenter import fragmenter
+from fragmenter_utils import draw_mol_with_highlights_and_legend
 import SMARTS
 from pprint import pprint
 
@@ -57,6 +59,12 @@ for smi in smiles:
     fragmentation, success, fragmentation_matches = frg.fragment(smi)
     print(smi, fragmentation)
 
+# examples of fragmentation drawing
+for i, SMILES in enumerate(smiles):
+    mol = Chem.MolFromSmiles(SMILES)
+    fragmentation, success, fragmentation_matches = frg.fragment(mol)
+    img = draw_mol_with_highlights_and_legend(mol, fragmentation_matches)
+    img.save(f'simple_example{i+1}.png')
 
 print()
 print('simple algorithm 2')
