@@ -145,7 +145,7 @@ complete_fragmenter = fragmenter(fragmentation_scheme, algorithm='complete', n_h
 
 # examples of fragmentation drawing
 group_names = {k+1:v[0] for k,v  in enumerate(UNIFAC_SMARTS)}
-for i, SMILES in enumerate(['CC1=C(C(=CC(=C1Cl)Cl)Cl)Cl', 'CCC=CCC1=C(CCC1=O)C', 'CCC1=CC(=C(C=C1)CC)CC']):
+for i, SMILES in enumerate(['CC1=C(C(=CC(=C1Cl)Cl)Cl)Cl', 'CCC=CCC1=C(CCC1=O)Cc1ccccc1', 'CCC1=CC(=C(C=C1)CC)CC']):
         mol = Chem.MolFromSmiles(SMILES)
         fragmentation, success, fragmentation_matches = simple_fragmenter.fragment(mol)
         img = draw_mol_with_highlights_and_legend(mol, fragmentation_matches, group_names)
