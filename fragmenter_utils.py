@@ -209,10 +209,8 @@ def draw_mol_with_highlights_and_legend(
                     bbox, outline=line_color_aromatic, width=line_width_aromatic
                 )
 
-    base_img.save("base.png")
-    underlay.save("underlay.png")
     base_img = Image.alpha_composite(underlay, base_img)
-    base_img.save("base2.png")
+
     # 3. Draw legend
     border_width = 5
     bordered_img = Image.new(
