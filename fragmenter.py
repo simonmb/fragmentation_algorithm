@@ -312,7 +312,7 @@ class fragmenter:
                 "fragment_complete does not accept multifragment molecules."
             )
 
-        temp_fragmentations, success = self.__complete_fragmentation(mol_SMILES)
+        temp_fragmentations, success = self.__complete_fragmentation(mol_SMILES, fragmenter.Chem.MolToSmiles(mol_SMILES))
 
         fragmentations = []
         fragmentations_matches = []
