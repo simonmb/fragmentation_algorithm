@@ -118,7 +118,7 @@ class fragmenter:
             n_heavy_atoms_cuttoff (int, optional): Maximum number of heavy atoms allowed for fragmentation in
                 'complete' or 'combined' algorithms. Defaults to -1.
             function_to_choose_fragmentation (callable or bool, optional): Function to select the best fragmentation
-                among possible fragmentations. Required for 'complete' or 'combined' algorithms. Defaults to False.
+                among possible fragmentations. Required for 'combined' algorithms. Defaults to False.
             n_max_fragmentations_to_find (int, optional): Maximum number of fragmentations to find.
                 Defaults to -1 (no limit) for the 'simple' algorithm.
 
@@ -155,21 +155,24 @@ class fragmenter:
                 raise ValueError(
                     "n_atoms_cuttoff needs to be specified for complete or combined algorithms."
                 )
-
-            if function_to_choose_fragmentation == False:
-                raise ValueError(
-                    "function_to_choose_fragmentation needs to be specified for complete or combined algorithms."
-                )
-
-            if not callable(function_to_choose_fragmentation):
-                raise TypeError(
-                    "function_to_choose_fragmentation needs to be a function."
-                )
-            else:
-                if type(function_to_choose_fragmentation([{}, {}])) not in [dict, list]:
-                    raise TypeError(
-                        "function_to_choose_fragmentation needs to take a list of fragmentations and return one fragmentation or a list of fragmentations."
+            if algorithm == "combined":
+                if function_to_choose_fragmentation == False:
+                    raise ValueError(
+                        "function_to_choose_fragmentation needs to be specified for complete or combined algorithms."
                     )
+
+                if not callable(function_to_choose_fragmentation):
+                    raise TypeError(
+                        "function_to_choose_fragmentation needs to be a function."
+                    )
+                else:
+                    if type(function_to_choose_fragmentation([{}, {}])) not in [
+                        dict,
+                        list,
+                    ]:
+                        raise TypeError(
+                            "function_to_choose_fragmentation needs to take a list of fragmentations and return one fragmentation or a list of fragmentations."
+                        )
 
             if n_max_fragmentations_to_find != -1:
                 if n_max_fragmentations_to_find < 1:
@@ -312,7 +315,9 @@ class fragmenter:
                 "fragment_complete does not accept multifragment molecules."
             )
 
-        temp_fragmentations, success = self.__complete_fragmentation(mol_SMILES, fragmenter.Chem.MolToSmiles(mol_SMILES))
+        temp_fragmentations, success = self.__complete_fragmentation(
+            mol_SMILES, fragmenter.Chem.MolToSmiles(mol_SMILES)
+        )
 
         fragmentations = []
         fragmentations_matches = []
@@ -358,7 +363,7 @@ class fragmenter:
                 mol, canonical_SMILES
             )
 
-            if success:
+            if success and self.algorithm == "combined":
                 fragmentation = self.function_to_choose_fragmentation(fragmentations)
 
         return fragmentation, success
@@ -388,7 +393,7 @@ class fragmenter:
 
         fragmentation, atom_indices_included_in_fragmentation = (
             self.__search_non_overlapping_solution(
-                mol, canonical_SMILES, {}, set(), set()
+                mol, canonical_SMILES, {}, set(), set(), {}
             )
         )
         success = len(atom_indices_included_in_fragmentation) == target_atom_count
@@ -416,6 +421,7 @@ class fragmenter:
                     cleaned_fragmentation,
                     cleaned_atom_indices,
                     cleaned_atom_indices,
+                    {},
                 )
             )
 
@@ -424,6 +430,36 @@ class fragmenter:
                 fragmentation = cleaned_fragmentation
             else:
                 level += 1
+
+        if not success and fragmentation:
+            # in case of incomplete fragmentation
+            # try one match at a time whether a specific match
+            # leads to an incomplete fragmentation
+            groups_leading_to_incomplete_fragmentation = {}
+            for SMARTS in fragmentation:
+                for match in fragmentation[SMARTS]:
+                    groups_leading_to_incomplete_fragmentation.setdefault(
+                        SMARTS, []
+                    ).append(match)
+
+                    cleaned_fragmentation, cleaned_atom_indices = (
+                        self.__search_non_overlapping_solution(
+                            mol,
+                            canonical_SMILES,
+                            cleaned_fragmentation,
+                            cleaned_atom_indices,
+                            cleaned_atom_indices,
+                            groups_leading_to_incomplete_fragmentation,
+                        )
+                    )
+
+                    if len(cleaned_atom_indices) == target_atom_count:
+                        success = True
+                        fragmentation = cleaned_fragmentation
+                        break
+
+                if success:
+                    break
 
         return fragmentation, success
 
@@ -434,6 +470,7 @@ class fragmenter:
         fragmentation,
         atom_indices_included_in_fragmentation,
         atom_indices_to_which_new_matches_have_to_be_adjacent,
+        groups_leading_to_incomplete_fragmentations,
     ):
         """Iteratively search for non-overlapping substructure matches to fragment the molecule.
 
@@ -446,7 +483,7 @@ class fragmenter:
             fragmentation (dict): Current mapping of SMARTS patterns to match lists.
             atom_indices_included_in_fragmentation (set): Set of atom indices already included in the fragmentation.
             atom_indices_to_which_new_matches_have_to_be_adjacent (set): Set of atom indices that new matches must be adjacent to.
-
+            groups_leading_to_incomplete_fragmentations (dict): keys are SMARTS, vlues are a list of tuples of found atom indices.
         Returns:
             tuple: A tuple containing:
                 - fragmentation (dict): Updated fragmentation mapping.
@@ -473,6 +510,7 @@ class fragmenter:
                                 fragmentation,
                                 atom_indices_included_in_fragmentation,
                                 atom_indices_to_which_new_matches_have_to_be_adjacent,
+                                groups_leading_to_incomplete_fragmentations,
                             )
                         )
 
@@ -486,6 +524,7 @@ class fragmenter:
         fragmentation,
         atom_indices_included_in_fragmentation,
         atom_indices_to_which_new_matches_have_to_be_adjacent,
+        groups_leading_to_incomplete_fragmentations,
     ):
         """Find and record the next non-overlapping substructure match for a given SMARTS pattern.
 
@@ -500,6 +539,7 @@ class fragmenter:
             fragmentation (dict): Current mapping of SMARTS patterns to lists of matches.
             atom_indices_included_in_fragmentation (set): Set of atom indices already assigned.
             atom_indices_to_which_new_matches_have_to_be_adjacent (set): Set of atom indices that new matches must be adjacent to.
+            groups_leading_to_incomplete_fragmentations (dict): keys are SMARTS, vlues are a list of tuples of found atom indices.
 
         Returns:
             tuple: A tuple containing:
@@ -520,8 +560,12 @@ class fragmenter:
 
         for match in matches:
             if atom_indices_included_in_fragmentation.isdisjoint(match):
-                fragmentation.setdefault(SMARTS, []).append(match)
-                atom_indices_included_in_fragmentation.update(match)
+                if (
+                    SMARTS not in groups_leading_to_incomplete_fragmentations
+                    or match not in groups_leading_to_incomplete_fragmentations[SMARTS]
+                ):
+                    fragmentation.setdefault(SMARTS, []).append(match)
+                    atom_indices_included_in_fragmentation.update(match)
 
         return fragmentation, atom_indices_included_in_fragmentation
 
