@@ -181,12 +181,36 @@ class fragmenter:
                     )
 
         if fragmentation_scheme_order is None:
-            fragmentation_scheme_order = list(
-                fragmentation_scheme
-            )  # sort to get reproducible results
+
+            # create automagic fragmentation_scheme_order from sizes of groups from largest to smallest and specificity of SMARTS
+            scheme_descriptors = []
+            for i, SMARTS in fragmentation_scheme.items():
+                if isinstance(SMARTS, list):
+                    SMARTS = SMARTS[0]
+                mol_SMARTS = fragmenter.Chem.MolFromSmarts(SMARTS)
+                n_atoms_SMARTS = 0
+                for atom in mol_SMARTS.GetAtoms():
+                    try:
+                        n_atoms_SMARTS += 1
+                        atom_query = atom.DescribeQuery()
+                        if "AtomHCount" not in atom_query:
+                            continue
+                        n_Hs = int(atom_query.split("AtomHCount")[1].split("=")[0])
+                        n_atoms_SMARTS += n_Hs
+                    except Exception:
+                        pass
+                scheme_descriptors.append((i, n_atoms_SMARTS, len(SMARTS)))
+
+            fragmentation_scheme_order = [
+                i
+                for i, p1, p2 in sorted(
+                    scheme_descriptors, key=lambda x: (x[1], x[2]), reverse=True
+                )
+            ]
+
             if algorithm in ["simple", "combined"]:
                 self.warnings.warn(
-                    "No especific fragmentation_scheme_order was given, you might get better results if you specify the order in which the groups are searched for."
+                    "No especific fragmentation_scheme_order was given, groups were sorted by group size from largest to smallest, you might get better results if you specify the order in which the groups are searched for."
                 )
 
         self.n_max_fragmentations_to_find = n_max_fragmentations_to_find
